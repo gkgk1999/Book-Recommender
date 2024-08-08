@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Recommendations</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        html, body {
+            height: 100%;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            padding-top: 56px;
+        }
+        .content {
+            flex: 1;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 1rem 0;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
+        <a class="navbar-brand" href="#">BookRec</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="content container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <h1>Book Recommendations</h1>
+                <form id="recommendationForm" onsubmit="submitRecommendation(); return false;">
+                    <div class="form-group">
+                        <label for="title">Title</label>
+                        <input type="text" class="form-control" id="title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="author">Author</label>
+                        <input type="text" class="form-control" id="author" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <textarea class="form-control" id="description" rows="3" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="coverImage">Cover Image URL</label>
+                        <input type="url" class="form-control" id="coverImage" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="genre">Genre</label>
+                        <input type="text" class="form-control" id="genre" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="rating">Rating</label>
+                        <input type="number" class="form-control" id="rating" min="0" max="5" step="0.1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="publicationDate">Publication Date</label>
+                        <input type="date" class="form-control" id="publicationDate" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Submit Recommendation</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-12">
+                <h2>Search Books</h2>
+                <form onsubmit="searchBooks(); return false;">
+                    <div class="form-group">
+                        <label for="searchQuery">Search Query</label>
+                        <input type="text" class="form-control" id="searchQuery" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Search</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="row mt-4" id="books">
+            <!-- Book recommendations will be displayed here -->
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <span class="text-muted">Created by GIRISH KARWASARA</span>
+        </div>
+    </footer>
+
+    <script>
+        async function searchBooks() {
+            const query = document.getElementById('searchQuery').value;
+            try {
+                const response = await fetch(`/api/search/?query=${query}`);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                const data = await response.json();
+                const booksDiv = document.getElementById('books');
+                booksDiv.innerHTML = '';
+
+                if (data.items) {
+                    data.items.forEach(book => {
+                        const bookDiv = document.createElement('div');
+                        bookDiv.className = 'col-md-4';
+                        bookDiv.innerHTML = `
+                            <div class="card mb-4">
+                                <img src="${book.volumeInfo.imageLinks ? book.volumeInfo.imageLinks.thumbnail : ''}" class="card-img-top" alt="${book.volumeInfo.title}">
+                                <div class="card-body">
+                                    <h5 class="card-title">${book.volumeInfo.title}</h5>
+                                    <p class="card-text"><strong>Author:</strong> ${book.volumeInfo.authors ? book.volumeInfo.authors.join(', ') : 'N/A'}</p>
+                                    <p class="card-text">${book.volumeInfo.description ? book.volumeInfo.description.substring(0, 100) + '...' : 'No description available.'}</p>
+                                    <a href="${book.volumeInfo.infoLink}" target="_blank" class="btn btn-sm btn-secondary">More Info</a>
+                                </div>
+                            </div>
+                        `;
+                        booksDiv.appendChild(bookDiv);
+                    });
+                } else {
+                    booksDiv.innerHTML = '<p class="col-12">No books found.</p>';
+                }
+            } catch (error) {
+                console.error('Error fetching books:', error);
+                alert('Failed to fetch books');
+            }
+        }
+
+        async function submitRecommendation() {
+            const title = document.getElementById('title').value;
+            const author = document.getElementById('author').value;
+            const description = document.getElementById('description').value;
+            const coverImage = document.getElementById('coverImage').value;
+            const genre = document.getElementById('genre').value;
+            const rating = document.getElementById('rating').value;
+            const publicationDate = document.getElementById('publicationDate').value;
+
+            try {
+                const response = await fetch('/api/recommendations/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        title,
+                        author,
+                        description,
+                        cover_image: coverImage,
+                        genre,
+                        rating,
+                        publication_date: publicationDate
+                    })
+                });
+
+                if (response.ok) {
+                    alert('Recommendation submitted successfully!');
+                    document.getElementById('recommendationForm').reset();
+                    fetchRecommendations();
+                } else {
+                    alert('Failed to submit recommendation');
+                }
+            } catch (error) {
+                console.error('Error submitting recommendation:', error);
+                alert('Failed to submit recommendation');
+            }
+        }
+
+        async function fetchRecommendations() {
+            try {
+                const response = await fetch('/api/recommendations/');
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                const data = await response.json();
+                const booksDiv = document.getElementById('books');
+                booksDiv.innerHTML = '';
+                data.forEach(book => {
+                    const bookDiv = document.createElement('div');
+                    bookDiv.className = 'book col-md-6';
+                    bookDiv.innerHTML = `
+                        <div class="media">
+                            <img src="${book.cover_image}" class="mr-3" alt="${book.title}">
+                            <div class="media-body book-details">
+                                <h5 class="mt-0">${book.title}</h5>
+                                <p><strong>Author:</strong> ${book.author}</p>
+                                <p>${book.description}</p>
+                                <p><strong>Genre:</strong> ${book.genre}</p>
+                                <p><strong>Rating:</strong> ${book.rating}</p>
+                                <p><strong>Publication Date:</strong> ${book.publication_date}</p>
+                                <button class="btn btn-sm btn-primary" onclick="likeRecommendation(${book.id})">Like</button>
+                                <form onsubmit="addComment(${book.id}); return false;">
+                                    <div class="form-group">
+                                        <input type="text" class="form-control" id="comment-${book.id}" placeholder="Add a comment" required>
+                                    </div>
+                                    <button type="submit" class="btn btn-sm btn-secondary">Comment</button>
+                                </form>
+                            </div>
+                        </div>
+                    `;
+                    booksDiv.appendChild(bookDiv);
+                });
+            } catch (error) {
+                console.error('Error fetching recommendations:', error);
+                alert('Failed to fetch recommendations');
+            }
+        }
+
+        async function likeRecommendation(id) {
+            try {
+                const response = await fetch(`/api/recommendations/${id}/like/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+
+                if (response.ok) {
+                    alert('Liked successfully!');
+                    fetchRecommendations();
+                } else {
+                    alert('Failed to like');
+                }
+            } catch (error) {
+                console.error('Error liking recommendation:', error);
+                alert('Failed to like recommendation');
+            }
+        }
+
+        async function addComment(id) {
+            const commentText = document.getElementById(`comment-${id}`).value;
+
+            try {
+                const response = await fetch(`/api/recommendations/${id}/comment/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        text: commentText
+                    })
+                });
+
+                if (response.ok) {
+                    alert('Comment added successfully!');
+                    document.getElementById(`comment-${id}`).value = '';
+                    fetchRecommendations();
+                } else {
+                    alert('Failed to add comment');
+                }
+            } catch (error) {
+                console.error('Error adding comment:', error);
+                alert('Failed to add comment');
+            }
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Fetch initial recommendations
+        fetchRecommendations();
+    </script>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
